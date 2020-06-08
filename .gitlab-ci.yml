@@ -1,0 +1,57 @@
+default:
+  image: ruby:2.5
+  tags:
+    - redoute
+
+variables:
+  CERBERUS_HOSTS: "http://cerberus.siege.red/Cerberus"
+  CERBERUS_CAMPAIGN: "CI_iofr-service-searchservice"
+  CERBERUS_TAG: "gitlab_plugin_test"
+  CERBERUS_ENVS: "QA"
+  DOCKER_DRIVER: overlay2
+  DOCKER_HOST: tcp://localhost:2375
+  DOCKER_TLS_CERTDIR: ""  
+
+stages:
+  - build
+  - test
+  - release
+
+build image: 
+  image: docker
+  stage: build
+  services:
+    - docker:dind
+  before_script:
+    - docker --version
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY    
+  script:
+  - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA . 
+  - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+
+test:
+  image: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+  stage: test
+  script:
+    - uname -a
+    - ruby cerberus.rb --cerberus_host ${CERBERUS_HOSTS} --campaign ${CERBERUS_CAMPAIGN} --tag ${CERBERUS_TAG}_$(date +%Y%m%d%H%M%S) --envs ${CERBERUS_ENVS}
+
+
+# TODO more complex validation before set it as stable
+release:
+  image: docker
+  stage: release
+  services:
+    - docker:dind
+  before_script:
+    - docker --version
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY    
+  script:
+    - docker pull "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+    - docker images
+    - docker tag "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA" "$CI_REGISTRY_IMAGE:latest"
+    - docker push "$CI_REGISTRY_IMAGE:latest"
+    # - docker tag "$CI_REGISTRY_IMAGE:latest" "$CI_REGISTRY_IMAGE:stable"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: on_success
