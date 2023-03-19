@@ -222,7 +222,7 @@ case res
 when Net::HTTPSuccess, Net::HTTPRedirection
   puts "--- Cerberus API return ---\n\n"
   puts res.body
-  exit(1) unless res.body.include? 'succesfully inserted to queue'
+  exit(1) unless res.body.include? 'successfully inserted to queue'
 else
   res.value
 end
