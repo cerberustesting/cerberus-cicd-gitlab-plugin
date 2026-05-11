@@ -16,7 +16,7 @@ def call_uri(url, method)
     req = Net::HTTP::Get.new(uri)
   end
   puts "Executing #{method} to: #{url}"
-  res = Net::HTTP.start(uri.hostname) do |http|
+  res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
     http.request(req)
   end
 
